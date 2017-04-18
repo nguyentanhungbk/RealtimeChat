@@ -17,8 +17,8 @@ class ChatViewCtrl: JSQMessagesViewController {
     var currentUser: User!
     var chatGroupKey: String?
     
-//    var senderAvatar: JSQMessagesAvatarImage?
-//    var receiverAvatar: JSQMessagesAvatarImage?
+    var senderAvatar: JSQMessagesAvatarImage?
+    var receiverAvatar: JSQMessagesAvatarImage?
     
     var messages = [JSQMessage]()
     lazy var outgoingBubbleImageView: JSQMessagesBubbleImage = self.setupOutgoingBubble()
@@ -30,22 +30,22 @@ class ChatViewCtrl: JSQMessagesViewController {
         let appDelegate = UIApplication.shared.delegate as! AppDelegate
         currentUser = appDelegate.currentUser
         
-//        DispatchQueue.global().async { 
-//            let senderData = try! Data(contentsOf: URL(string: self.currentUser.photoURL!)!)
-//            let receiverData = try! Data(contentsOf: URL(string: self.partnerUser.photoURL!)!)
-//            
-//            let senderImage = UIImage(data: senderData)
-//            let receiverImage = UIImage(data: receiverData)
-//            
-//            self.senderAvatar = JSQMessagesAvatarImage(avatarImage: senderImage, highlightedImage: senderImage, placeholderImage: senderImage)
-//            self.receiverAvatar = JSQMessagesAvatarImage(avatarImage: receiverImage, highlightedImage: receiverImage, placeholderImage: receiverImage)
-//        }
+        DispatchQueue.global().async { 
+            let senderData = try! Data(contentsOf: URL(string: self.currentUser.photoURL!)!)
+            let receiverData = try! Data(contentsOf: URL(string: self.partnerUser.photoURL!)!)
+            
+            let senderImage = UIImage(data: senderData)
+            let receiverImage = UIImage(data: receiverData)
+            
+            self.senderAvatar = JSQMessagesAvatarImage(avatarImage: senderImage, highlightedImage: senderImage, placeholderImage: senderImage)
+            self.receiverAvatar = JSQMessagesAvatarImage(avatarImage: receiverImage, highlightedImage: receiverImage, placeholderImage: receiverImage)
+        }
         
         self.senderDisplayName = currentUser.name!
         self.senderId = currentUser.id!
         
-        collectionView!.collectionViewLayout.incomingAvatarViewSize = CGSize.zero
-        collectionView!.collectionViewLayout.outgoingAvatarViewSize = CGSize.zero
+//        collectionView!.collectionViewLayout.incomingAvatarViewSize = CGSize.zero
+//        collectionView!.collectionViewLayout.outgoingAvatarViewSize = CGSize.zero
         
         if let _ = chatGroupKey {
             let currentUid = FIRAuth.auth()?.currentUser?.uid
@@ -114,18 +114,17 @@ class ChatViewCtrl: JSQMessagesViewController {
     }
     
     override func collectionView(_ collectionView: JSQMessagesCollectionView!, avatarImageDataForItemAt indexPath: IndexPath!) -> JSQMessageAvatarImageDataSource! {
-//        if let _ = self.senderAvatar {
-//            let message = messages[indexPath.item] // 1
-//            if message.senderId == senderId { // 2
-//                return senderAvatar
-//            } else { // 3
-//                return receiverAvatar
-//            }
-//        }
-//        else{
-//            return nil
-//        }
-        return nil
+        if let _ = self.senderAvatar {
+            let message = messages[indexPath.item] // 1
+            if message.senderId == senderId { // 2
+                return senderAvatar
+            } else { // 3
+                return receiverAvatar
+            }
+        }
+        else{
+            return nil
+        }
     }
     
     override func didPressSend(_ button: UIButton!, withMessageText text: String!, senderId: String!, senderDisplayName: String!, date: Date!) {
