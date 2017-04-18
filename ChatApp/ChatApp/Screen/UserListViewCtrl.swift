@@ -54,7 +54,7 @@ extension UserListViewCtrl: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let user = users[indexPath.row]
-        let chatVC = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewCtrl") as! ChatViewCtrl
+        let chatVC = ChatViewCtrl()
         chatVC.partnerUser = user
         self.navigationController?.pushViewController(chatVC, animated: true)
     }

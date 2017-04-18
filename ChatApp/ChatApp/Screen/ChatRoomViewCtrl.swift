@@ -73,7 +73,7 @@ extension ChatRoomViewCtrl: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let room = chatRooms[indexPath.row]
-        let chatVC = self.storyboard?.instantiateViewController(withIdentifier: "ChatViewCtrl") as! ChatViewCtrl
+        let chatVC = ChatViewCtrl()
         chatVC.chatGroupKey = room.id
         self.navigationController?.pushViewController(chatVC, animated: true)
     }

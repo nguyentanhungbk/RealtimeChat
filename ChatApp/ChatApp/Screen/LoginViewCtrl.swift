@@ -8,6 +8,7 @@
 
 import UIKit
 import FirebaseAuth
+import FirebaseDatabase
 
 class LoginViewCtrl: UIViewController {
 
@@ -26,8 +27,20 @@ class LoginViewCtrl: UIViewController {
         }
         FIRAuth.auth()?.signIn(withEmail: email, password: pwd, completion: { (user, error) in
             if error == nil {
-                let chatRoomVC = self.storyboard?.instantiateViewController(withIdentifier: "ChatRoomViewCtrl") as! ChatRoomViewCtrl
-                self.navigationController?.pushViewController(chatRoomVC, animated: true)
+                let currentUserRef = FIRDatabase.database().reference().child("users").child((user?.uid)!)
+                currentUserRef.observeSingleEvent(of: .value, with: { (snapshoot) in
+                    debugPrint(snapshoot)
+                    if let dic = snapshoot.value as? [String:AnyObject] {
+                        let user = User(data: dic)
+                        user.id = snapshoot.key
+                        let appDelegate = UIApplication.shared.delegate as! AppDelegate
+                        appDelegate.currentUser = user
+                        
+                        // move to chat room
+                        let chatRoomVC = self.storyboard?.instantiateViewController(withIdentifier: "ChatRoomViewCtrl") as! ChatRoomViewCtrl
+                        self.navigationController?.pushViewController(chatRoomVC, animated: true)
+                    }
+                })
             }
         })
     }

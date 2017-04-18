@@ -9,24 +9,45 @@
 import UIKit
 import FirebaseDatabase
 import FirebaseAuth
+import JSQMessagesViewController
 
-class ChatViewCtrl: UIViewController {
-
-    @IBOutlet weak var tfChatMessage: UITextField!
-    @IBOutlet weak var btnSend: UIButton!
+class ChatViewCtrl: JSQMessagesViewController {
     
     var partnerUser: User!
     var currentUser: User!
     var chatGroupKey: String?
     
+//    var senderAvatar: JSQMessagesAvatarImage?
+//    var receiverAvatar: JSQMessagesAvatarImage?
+    
+    var messages = [JSQMessage]()
+    lazy var outgoingBubbleImageView: JSQMessagesBubbleImage = self.setupOutgoingBubble()
+    lazy var incomingBubbleImageView: JSQMessagesBubbleImage = self.setupIncomingBubble()
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-
-//        let appDelegate = UIApplication.shared.delegate as! AppDelegate
-//        currentUser = appDelegate.currentUser
+        
+        let appDelegate = UIApplication.shared.delegate as! AppDelegate
+        currentUser = appDelegate.currentUser
+        
+//        DispatchQueue.global().async { 
+//            let senderData = try! Data(contentsOf: URL(string: self.currentUser.photoURL!)!)
+//            let receiverData = try! Data(contentsOf: URL(string: self.partnerUser.photoURL!)!)
+//            
+//            let senderImage = UIImage(data: senderData)
+//            let receiverImage = UIImage(data: receiverData)
+//            
+//            self.senderAvatar = JSQMessagesAvatarImage(avatarImage: senderImage, highlightedImage: senderImage, placeholderImage: senderImage)
+//            self.receiverAvatar = JSQMessagesAvatarImage(avatarImage: receiverImage, highlightedImage: receiverImage, placeholderImage: receiverImage)
+//        }
+        
+        self.senderDisplayName = currentUser.name!
+        self.senderId = currentUser.id!
+        
+        collectionView!.collectionViewLayout.incomingAvatarViewSize = CGSize.zero
+        collectionView!.collectionViewLayout.outgoingAvatarViewSize = CGSize.zero
         
         if let _ = chatGroupKey {
-            btnSend.isUserInteractionEnabled = false
             let currentUid = FIRAuth.auth()?.currentUser?.uid
             var partnerUid: String = ""
             let membersRef = FIRDatabase.database().reference().child("members").child(chatGroupKey!)
@@ -44,14 +65,70 @@ class ChatViewCtrl: UIViewController {
                     if let dic = snapshoot.value as? [String:AnyObject] {
                         self.partnerUser = User(data: dic)
                         self.partnerUser.id = snapshoot.key
-                        self.btnSend.isUserInteractionEnabled = true
+                        self.loadUserMessage()
                     }
                 })
             })
         }
     }
 
-    @IBAction func sendMessage(){
+    private func loadUserMessage(){
+        if let groupKey = chatGroupKey {
+            let groupMessagesRef = FIRDatabase.database().reference().child("messages").child(groupKey)
+            groupMessagesRef.observe(.childAdded, with: { (snapshoot) in
+                if let messageDic = snapshoot.value as? [String:AnyObject] {
+                    let messageObj = Message(data: messageDic)
+                    let message = JSQMessage(senderId: messageObj.fromId, displayName: self.partnerUser.name, text: messageObj.message!)
+                    self.messages.append(message!)
+                    self.finishReceivingMessage()
+                }
+            }, withCancel: nil)
+        }
+    }
+    
+    private func setupOutgoingBubble() -> JSQMessagesBubbleImage {
+        let bubbleImageFactory = JSQMessagesBubbleImageFactory()
+        return bubbleImageFactory!.outgoingMessagesBubbleImage(with: UIColor.jsq_messageBubbleBlue())
+    }
+    
+    private func setupIncomingBubble() -> JSQMessagesBubbleImage {
+        let bubbleImageFactory = JSQMessagesBubbleImageFactory()
+        return bubbleImageFactory!.incomingMessagesBubbleImage(with: UIColor.jsq_messageBubbleLightGray())
+    }
+    
+    override func collectionView(_ collectionView: JSQMessagesCollectionView!, messageDataForItemAt indexPath: IndexPath!) -> JSQMessageData! {
+        return messages[indexPath.item]
+    }
+    
+    override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        return messages.count
+    }
+    
+    override func collectionView(_ collectionView: JSQMessagesCollectionView!, messageBubbleImageDataForItemAt indexPath: IndexPath!) -> JSQMessageBubbleImageDataSource! {
+        let message = messages[indexPath.item] // 1
+        if message.senderId == senderId { // 2
+            return outgoingBubbleImageView
+        } else { // 3
+            return incomingBubbleImageView
+        }
+    }
+    
+    override func collectionView(_ collectionView: JSQMessagesCollectionView!, avatarImageDataForItemAt indexPath: IndexPath!) -> JSQMessageAvatarImageDataSource! {
+//        if let _ = self.senderAvatar {
+//            let message = messages[indexPath.item] // 1
+//            if message.senderId == senderId { // 2
+//                return senderAvatar
+//            } else { // 3
+//                return receiverAvatar
+//            }
+//        }
+//        else{
+//            return nil
+//        }
+        return nil
+    }
+    
+    override func didPressSend(_ button: UIButton!, withMessageText text: String!, senderId: String!, senderDisplayName: String!, date: Date!) {
         var chatGroup: FIRDatabaseReference
         if let key = chatGroupKey {
             chatGroup = FIRDatabase.database().reference().child("chat-groups").child(key)
@@ -66,13 +143,16 @@ class ChatViewCtrl: UIViewController {
             currentUserChatGroup.updateChildValues(["data":1])
             partnerUserChatGroup.updateChildValues(["data":1])
             memberGroupRef.setValue([(FIRAuth.auth()?.currentUser?.uid)!, partnerUser.id!])
+            self.loadUserMessage()
         }
         
         let chatMessageGroup = FIRDatabase.database().reference().child("messages").child(chatGroup.key).childByAutoId()
         
         // start update database
-        chatGroup.updateChildValues(["lastMessage":tfChatMessage.text!, "photoURL":partnerUser.photoURL!, "time":"\(Date().timeIntervalSince1970)"])
-        chatMessageGroup.updateChildValues(["fromId":(FIRAuth.auth()?.currentUser?.uid)!, "toId":partnerUser.id!, "message":tfChatMessage.text!, "time":"\(Date().timeIntervalSince1970)"])
+        chatGroup.updateChildValues(["lastMessage":text, "photoURL":partnerUser.photoURL!, "time":"\(date.timeIntervalSince1970)"])
+        chatMessageGroup.updateChildValues(["fromId":senderId, "toId":partnerUser.id!, "message":text, "time":"\(date.timeIntervalSince1970)"])
     }
+}
 
+extension ChatViewCtrl {
 }
